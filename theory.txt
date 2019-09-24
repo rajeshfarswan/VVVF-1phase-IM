@@ -1,0 +1,144 @@
+///////////////////////////////////////////////////////////////////////
+    
+// actual calculations for motor having specifications below///////////
+// kw 1.2, v 110, rpm 1427, a 5.12, 50Hz, delta connection, 4 pole   //
+//                                                                  //
+/////////////////////////////////////////////////////////////////////
+
+Kf = 110/50 = 2.2    ---------(0)  //motor constant ratio = rated speed/rated frequency
+
+for sine PWM
+
+V(LL) = (1/(2*sqrt(2)))*Vdc*m*Mmax   ------------(1) //for half bridge inverter configuration
+        where,
+        Vdc = dc link voltage
+        m = modulation index
+        Mmax = 1
+
+V(LL)max = 120 Vac              //max ac voltage
+Fmax = 226.58/4.4 = 54.54 Hz    //max ac frequency
+
+define, Ci = K1*F ---------------(2)
+        
+        K1 = Cimax/Fmax
+        where,
+        Ci = input reference counts for speed
+        F = output frequency
+
+define , Cv = K2*Vdc --------------(3)
+
+         where,
+         Cv = ADC counts for DC link voltage
+         Vdc = Vdc1+Vdc2, DC link total voltage
+       
+         K2 = Cvmax/Vdcmax
+         
+         Cvmax = 1023+1023 = 2046   //summation of two adc values = total adc value
+         Vdcmax = 400v
+
+         K2 = 2046/400 = 5.115
+
+substitute (3) in (1)
+
+V(LL) = (1/(2*sqrt(2)))*Cv*m*Mmax)/K2    --------(4)
+
+substitute (0) in (4)
+
+Kf*F = (1/(2*sqrt(2)))*Cv*m*Mmax)/K2   ------(5)
+
+substitute (2) in (5)
+
+(Kf*Ci)/K1 = (1/(2*sqrt(2)))*Cv*m*Mmax)/K2
+
+solve for m,
+
+m = [((2*sqrt(2))*kf*K2)/(K1*Mmax)]*(Ci/Cv)
+
+m = K3*(Ci/Cv)  -------------(6)
+
+m = Ci/Cv
+ 
+where, 
+     K3 = ((2*sqrt(2))*kf*K2)/(K1*Mmax)  ------(7)
+
+if K1 is such that, K3 = 1  (*find K1 for K3 = 1)   (K1 = 31.83 for K3 = 1)
+
+then,
+
+m = Ci/Cv  -----------------(8)
+[* m (Modulation variable in main.c)
+   Ci (SPEEDREF in main.h and SpeedRef variable in main.c )
+   Cv (Vavg variable in main.c)
+
+///////////////////////////////////////////////////////////
+
+// calculate frequency //
+
+f = 1/(P*S*Cr)   -------(9)
+
+where,
+      P = timer period in us (PR1 in init.c)
+      S = no. of samples (samples in main.h)
+      Cr = sampling counter value
+
+substitute substitute (2) in (9)
+
+Ci/K1 = 1/(P*S*Cr) 
+
+or 
+
+Cr = (K1/P*S)*(1/Ci)
+
+or 
+
+Cr = K4/Ci
+
+where,
+     K4 = K1/(P*S)
+     K4 = 31.83/(10us*60) = 53050
+
+Cr = 53050/Ci   
+
+[* Cr (Frequency variable in main.c)
+   K4 (CONST_K4 in main.h and CONSTANT_K4 variable in main.c)
+
+
+////////////////////////////////////////////////////////////
+
+S = (120*F)/P
+    where,
+    P = 4
+    F = inverter frequency
+S = speed of motor in rpm
+
+
+S = (120/(P*K1))*Ci
+
+S= K5*Ci
+
+where, 
+   K5 = 120/(P*K1)
+      = 120/(4*31.83)
+      = 0.9425
+
+S = 0.9425*Ci
+
+or Ci = S/0.9425
+
+////////////////////////////////////////////////////////////
+
+on line settings
+
+ip ac voltage = 110 Vac single phase
+VDCmax available = 325
+consider 300Vdc available during load
+
+V(ll)rms that can be obtained = 106 vac  //considering half bridge inverter
+therefore frequency for above voltage = 106/2.2 = 48.2 Hz
+speed that can be obtained = 1446 rpm
+
+therefore setcount for speed reference Ci = 1534 counts //set SPEEDREF in main.h
+
+////////////////////////////////////////////////////////////
+
+
